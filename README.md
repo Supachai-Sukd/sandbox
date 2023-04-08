@@ -10,8 +10,6 @@ make test-unit
 make test-ingegration
 ```
 
-### 🤖 End-to-End
 
-```console
-make test-e2e
-```
+
+
