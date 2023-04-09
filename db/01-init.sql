@@ -8,3 +8,4 @@ CREATE TABLE
         balance float8 NOT NULL DEFAULT 0
     );
 
+INSERT INTO "true_money_wallet" ("id", "name", "category", "currency", "balance") VALUES (1, 'test-name', 'test-category', 'test-currency', 9.1);
