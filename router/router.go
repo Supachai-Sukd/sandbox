@@ -18,7 +18,8 @@ func RegRoute(db *sql.DB) *gin.Engine {
 
 	hWallet := true_money_wallet.New(db)
 
-	r.POST("/true-money-wallet", hWallet.CreateWallet)
+	r.GET("/wallets", hWallet.WalletList)
+	r.POST("/wallet", hWallet.CreateWallet)
 
 	return r
 }

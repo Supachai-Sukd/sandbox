@@ -44,7 +44,7 @@ const (
 
 func InitDB(db *sql.DB) error {
 	// Read the SQL file
-	content, err := ioutil.ReadFile("db/01-init.sql")
+	content, err := ioutil.ReadFile("db/init.sql")
 	if err != nil {
 		return fmt.Errorf("failed to read SQL file: %w", err)
 	}

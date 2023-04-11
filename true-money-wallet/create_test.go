@@ -2,12 +2,15 @@
 
 package true_money_wallet
 
+
+
+
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"bytes"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
@@ -15,62 +18,53 @@ import (
 )
 
 func TestCreateWallet(t *testing.T) {
-	// Create a new Gin router
+	// Set up Gin
+	gin.SetMode(gin.TestMode)
 	router := gin.Default()
 
-	// Define a handler function to create a new wallet
-	createHandler := func(c *gin.Context) {
-		// Parse the request body into a TrueMoneyWallet struct
-		var wallet TrueMoneyWallet
-		if err := c.BindJSON(&wallet); err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Open a new database connection
-		db, mock, err := sqlmock.New()
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		defer db.Close()
-
-		// Expect a query to insert the new wallet into the database
-		mock.ExpectExec("INSERT INTO true_money_wallet").WithArgs(wallet.Name, wallet.Category, wallet.Currency, wallet.Balance).WillReturnResult(sqlmock.NewResult(1, 1))
-
-		// Return the created wallet as JSON
-		c.JSON(http.StatusCreated, wallet)
-	}
-
-	// Mount the createHandler function at the /true-money-wallet endpoint
-	router.POST("/true-money-wallet", createHandler)
-
-	// Create a new wallet to send in our request
-	newWallet := TrueMoneyWallet{
-		Name:     "test1",
-		Category: "save",
-		Currency: "THB",
-		Balance:  99.98,
-	}
-
-	// Marshal the new wallet into JSON
-	payload, err := json.Marshal(newWallet)
+	// Set up mock DB
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Fatalf("Error marshaling payload: %v", err)
+		t.Fatalf("Error initializing mock database: %s", err)
+	}
+	defer db.Close()
+
+	h := handler{db: db}
+	wallet := &TrueMoneyWallet{
+		Name:     "Test Wallet",
+		Category: "Test Category",
+		Currency: "USD",
+		Balance:  100,
 	}
 
-	// Create a new request with the JSON payload
-	req, err := http.NewRequest("POST", "/true-money-wallet", bytes.NewBuffer(payload))
-	if err != nil {
-		t.Fatalf("Error creating request: %v", err)
-	}
+	// Set up mock expectations
+	mock.ExpectPrepare("INSERT INTO true_money_wallet").ExpectQuery().
+		WithArgs(wallet.Name, wallet.Category, wallet.Currency, wallet.Balance).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
-	// Create a new test HTTP recorder
-	recorder := httptest.NewRecorder()
+	// Create request
+	walletJSON, _ := json.Marshal(wallet)
+	req, _ := http.NewRequest("POST", "/wallet", bytes.NewBuffer(walletJSON))
+	req.Header.Set("Content-Type", "application/json")
 
-	// Send the request to the server
-	router.ServeHTTP(recorder, req)
+	// Execute request
+	resp := httptest.NewRecorder()
+	router.POST("/wallet", h.CreateWallet)
+	router.ServeHTTP(resp, req)
 
-	// Check that the response code is 201 Created
-	assert.Equal(t, http.StatusCreated, recorder.Code)
+	// Check response
+	assert.Equal(t, http.StatusCreated, resp.Code)
+
+	// Check response body
+	var respWallet TrueMoneyWallet
+	err = json.Unmarshal(resp.Body.Bytes(), &respWallet)
+	assert.Nil(t, err)
+	assert.Equal(t, "Test Wallet", respWallet.Name)
+	assert.Equal(t, "Test Category", respWallet.Category)
+	assert.Equal(t, "USD", respWallet.Currency)
+	assert.Equal(t, 100.00, respWallet.Balance)
+
+	// Check mock expectations were met
+	err = mock.ExpectationsWereMet()
+	assert.Nil(t, err)
 }
