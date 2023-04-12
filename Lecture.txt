@@ -1,6 +1,0 @@
-ควรใช้ t.log ใน test
-
-คำว่า Request, Response ควรอยู่หลัง
-
-Fatal พังหมด
-var resp SomeStruct  // จะได้ Zero value ทั้งหมด

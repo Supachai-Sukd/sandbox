@@ -3,112 +3,43 @@
 package true_money_wallet
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
+
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
-
-    "github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 )
 
-// func TestCreateWalletIntegration(t *testing.T) {
-// 	// start the server
-// 	go func() {
-// 		err := http.ListenAndServe(":2566", nil)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-// 	}()
+// Mock ของ
+func handlerMock(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"id": 1, "name": "Supachai", "Info": "gopher"}`))
+}
 
-// 	// wait for the server to start
-// 	time.Sleep(1 * time.Second)
+func TestMakeHttp(t *testing.T) {
 
-// 	// set the endpoint URL
-// 	url := "http://localhost:2566/wallet"
+	server := httptest.NewServer(http.HandlerFunc(handlerMock))
+	defer server.Close()
 
-// 	body := `{"name":"test1", "category":"save", "currency":"THB", "balance": 99}`
+	want := &Response{
+		ID:   1,
+		Name: "Supachai",
+		Info: "gopher",
+	}
 
-// 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
+	t.Run("Happy server response", func(t *testing.T) {
+		resp, err := MakeHTTPCall(server.URL)
 
-// 	req.Header.Set("Content-Type", "application/json")
-
-// 	client := &http.Client{}
-// 	resp, err := client.Do(req)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
-
-// 	defer resp.Body.Close()
-
-// 	var response Wallet
-// 	err = json.NewDecoder(resp.Body).Decode(&response)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
-
-// 	expected := Wallet{
-// 		Name:     "test1",
-// 		Category: "save",
-// 		Currency: "THB",
-// 		Balance:  99.0,
-// 	}
-// 	assert.Equal(t, expected, response)
-
-// }
-
-
-func TestCreateWalletIntegration(t *testing.T) {
-	// start the server
-	// go func() {
-	// 	err := http.ListenAndServe(":2566", nil)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }()
-
-	// // wait for the server to start
-	// time.Sleep(1 * time.Second)
-   
-	// // set the endpoint URL
-	// url := "http://localhost:2566/wallet"
-   // create a new Gin router
-	router := gin.Default()
-
-	// define the endpoint handler
-	router.POST("/wallet", func(c *gin.Context) {
-		var wallet TrueMoneyWallet
-		err := c.ShouldBindJSON(&wallet)
-		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
-			return
+		// เราสามารถใช้การเทียบ Struct ได้ตามด้านล่าง
+		// reflect.DeepEqual คือ ลึกๆแล้ว Struct นั้นหน้าตาเหมือนกันไหม
+		if !reflect.DeepEqual(resp, want) {
+			t.Errorf("expected (%v), got (%v)", want, resp)
 		}
-		wallet.ID = 99 // set a fixed ID for testing
-		c.JSON(http.StatusOK, wallet)
+
+		if !errors.Is(err, nil) {
+			t.Errorf("expected (%v), got (%v)", nil, err)
+		}
 	})
 
-	// create the HTTP request
-	payload := gin.H{"name": "test1", "category": "save", "currency": "THB", "balance": 99.0}
-	payloadBytes, _ := json.Marshal(payload)
-	req, _ := http.NewRequest(http.MethodPost, "http://localhost:2566/wallet", bytes.NewBuffer(payloadBytes))
-	req.Header.Set("Content-Type", "application/json")
-
-	// send the HTTP request and record the response
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	// check the response
-	assert.Equal(t, http.StatusOK, res.Code)
-	expectedResponse := gin.H{"id": 99.0, "name": "test1", "category": "save", "currency": "THB", "balance": 99.0}
-	var actualResponse gin.H
-	err := json.Unmarshal(res.Body.Bytes(), &actualResponse)
-	assert.Nil(t, err)
-	assert.Equal(t, expectedResponse, actualResponse)
 }
